@@ -32,7 +32,7 @@ var (
 	BindAddress = ":0"
 )
 
-func Init() error {
+func Init(startServer bool) error {
 	switch Registry {
 	case "kubernetes":
 		registry.DefaultRegistry = registry.NewKubernetesRegistry()
@@ -47,11 +47,15 @@ func Init() error {
 		Id = Name + "-" + uuid.NewUUID().String()
 	}
 
-	if DefaultServer == nil {
-		DefaultServer = NewRpcServer(BindAddress)
+	if startServer {
+		if DefaultServer == nil {
+			DefaultServer = NewRpcServer(BindAddress)
+		}
+
+		return DefaultServer.Init()
 	}
 
-	return DefaultServer.Init()
+	return nil
 }
 
 func NewReceiver(handler interface{}) Receiver {
