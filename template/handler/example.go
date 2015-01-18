@@ -4,9 +4,9 @@ import (
 	"code.google.com/p/go.net/context"
 	"code.google.com/p/goprotobuf/proto"
 
-	"github.com/asim/go-micro/server"
-	example "github.com/asim/go-micro/template/proto/example"
 	log "github.com/cihub/seelog"
+	"github.com/dancannon/go-micro/server"
+	example "github.com/dancannon/go-micro/template/proto/example"
 )
 
 type Example struct{}

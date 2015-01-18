@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/asim/go-micro/client"
 	log "github.com/cihub/seelog"
+	"github.com/dancannon/go-micro/client"
 )
 
 var ctxs = struct {

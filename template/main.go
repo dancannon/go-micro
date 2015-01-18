@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/asim/go-micro/server"
-	"github.com/asim/go-micro/template/handler"
+	"github.com/dancannon/go-micro/server"
+	"github.com/dancannon/go-micro/template/handler"
 )
 
 func main() {

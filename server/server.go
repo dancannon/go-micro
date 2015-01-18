@@ -9,9 +9,9 @@ import (
 	"syscall"
 
 	"code.google.com/p/go-uuid/uuid"
-	"github.com/asim/go-micro/registry"
-	"github.com/asim/go-micro/store"
 	log "github.com/cihub/seelog"
+	"github.com/dancannon/go-micro/registry"
+	"github.com/dancannon/go-micro/store"
 )
 
 type Server interface {

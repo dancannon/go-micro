@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/asim/go-micro/errors"
 	log "github.com/cihub/seelog"
+	"github.com/dancannon/go-micro/errors"
 	rpc "github.com/youtube/vitess/go/rpcplus"
 	js "github.com/youtube/vitess/go/rpcplus/jsonrpc"
 	pb "github.com/youtube/vitess/go/rpcplus/pbrpc"

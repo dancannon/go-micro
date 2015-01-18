@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/asim/go-micro/errors"
-	"github.com/asim/go-micro/registry"
+	"github.com/dancannon/go-micro/errors"
+	"github.com/dancannon/go-micro/registry"
 	rpc "github.com/youtube/vitess/go/rpcplus"
 	js "github.com/youtube/vitess/go/rpcplus/jsonrpc"
 	pb "github.com/youtube/vitess/go/rpcplus/pbrpc"

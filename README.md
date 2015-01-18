@@ -52,7 +52,7 @@ message Response {
 }
 ```
 
-Compile proto `protoc -I$GOPATH/src --go_out=$GOPATH/src $GOPATH/src/github.com/asim/go-micro/template/proto/example/example.proto`
+Compile proto `protoc -I$GOPATH/src --go_out=$GOPATH/src $GOPATH/src/github.com/dancannon/go-micro/template/proto/example/example.proto`
 
 ### Create request handler
 `go-micro/template/handler/example.go`:
@@ -64,8 +64,8 @@ import (
 	"code.google.com/p/go.net/context"
 	"code.google.com/p/goprotobuf/proto"
 
-	"github.com/asim/go-micro/server"
-	example "github.com/asim/go-micro/template/proto/example"
+	"github.com/dancannon/go-micro/server"
+	example "github.com/dancannon/go-micro/template/proto/example"
 	log "github.com/cihub/seelog"
 )
 
@@ -89,8 +89,8 @@ package main
 import (
 	"log"
 
-	"github.com/asim/go-micro/server"
-	"github.com/asim/go-micro/template/handler"
+	"github.com/dancannon/go-micro/server"
+	"github.com/dancannon/go-micro/template/handler"
 )
 
 func main() {
