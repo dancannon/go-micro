@@ -1,7 +1,6 @@
 package server
 
 import (
-	"flag"
 	"os"
 	"os/signal"
 	"strconv"
@@ -29,19 +28,12 @@ var (
 	Id            string
 	DefaultServer Server
 
-	flagRegistry    string
-	flagBindAddress string
+	Registry    = "consul"
+	BindAddress = ":0"
 )
 
-func init() {
-	flag.StringVar(&flagRegistry, "registry", "consul", "Registry for discovery. kubernetes, consul, etc")
-	flag.StringVar(&flagBindAddress, "bind_address", ":0", "Bind address for the server. 127.0.0.1:8080")
-}
-
 func Init() error {
-	flag.Parse()
-
-	switch flagRegistry {
+	switch Registry {
 	case "kubernetes":
 		registry.DefaultRegistry = registry.NewKubernetesRegistry()
 		store.DefaultStore = store.NewMemcacheStore()
@@ -56,7 +48,7 @@ func Init() error {
 	}
 
 	if DefaultServer == nil {
-		DefaultServer = NewRpcServer(flagBindAddress)
+		DefaultServer = NewRpcServer(BindAddress)
 	}
 
 	return DefaultServer.Init()
