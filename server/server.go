@@ -1,112 +1,80 @@
 package server
 
 import (
-	"flag"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"code.google.com/p/go-uuid/uuid"
-	"github.com/asim/go-micro/registry"
-	"github.com/asim/go-micro/store"
 	log "github.com/cihub/seelog"
+
+	"github.com/asim/go-micro/registry"
+	"github.com/asim/go-micro/transport"
 )
 
-type Server interface {
-	Address() string
-	Init() error
-	NewReceiver(interface{}) Receiver
-	NewNamedReceiver(string, interface{}) Receiver
-	Register(Receiver) error
-	Start() error
-	Stop() error
+type Server struct {
+	id, name  string
+	transport transport.Transport
+	registry  registry.Registry
+
+	close chan struct{}
 }
 
-var (
-	Name          string
-	Id            string
-	DefaultServer Server
-
-	flagRegistry    string
-	flagBindAddress string
-)
-
-func init() {
-	flag.StringVar(&flagRegistry, "registry", "consul", "Registry for discovery. kubernetes, consul, etc")
-	flag.StringVar(&flagBindAddress, "bind_address", ":0", "Bind address for the server. 127.0.0.1:8080")
+func New(id, name string, t transport.Transport, r registry.Registry) (*Server, error) {
+	return &Server{
+		id:        id,
+		name:      name,
+		transport: t,
+		registry:  r,
+	}, nil
 }
 
-func Init() error {
-	flag.Parse()
-
-	switch flagRegistry {
-	case "kubernetes":
-		registry.DefaultRegistry = registry.NewKubernetesRegistry()
-		store.DefaultStore = store.NewMemcacheStore()
-	}
-
-	if len(Name) == 0 {
-		Name = "go-server"
-	}
-
-	if len(Id) == 0 {
-		Id = Name + "-" + uuid.NewUUID().String()
-	}
-
-	if DefaultServer == nil {
-		DefaultServer = NewRpcServer(flagBindAddress)
-	}
-
-	return DefaultServer.Init()
-}
-
-func NewReceiver(handler interface{}) Receiver {
-	return DefaultServer.NewReceiver(handler)
-}
-
-func NewNamedReceiver(path string, handler interface{}) Receiver {
-	return DefaultServer.NewNamedReceiver(path, handler)
-}
-
-func Register(r Receiver) error {
-	return DefaultServer.Register(r)
-}
-
-func Run() error {
-	if err := Start(); err != nil {
+func (s *Server) Start(address string) error {
+	l, err := s.transport.Start(address)
+	if err != nil {
 		return err
 	}
 
 	// parse address for host, port
-	parts := strings.Split(DefaultServer.Address(), ":")
+	parts := strings.Split(address, ":")
 	host := strings.Join(parts[:len(parts)-1], ":")
 	port, _ := strconv.Atoi(parts[len(parts)-1])
 
 	// register service
-	node := registry.NewNode(Id, host, port)
-	service := registry.NewService(Name, node)
+	node := registry.Node{s.id, host, port}
+	service := registry.Service{s.name, []registry.Node{node}}
 
-	log.Debugf("Registering %s", node.Id())
-	registry.Register(service)
+	log.Debugf("Registering %s", node.Id)
+	s.registry.Register(service)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
-	log.Debugf("Received signal %s", <-ch)
 
-	log.Debugf("Deregistering %s", node.Id())
-	registry.Deregister(service)
+	for {
+		select {
+		case <-ch:
+			log.Debugf("Received signal")
+		case <-s.close:
+			log.Debugf("Stopping server")
+		}
+	}
 
-	return Stop()
+	log.Debugf("Deregistering %s", node.Id)
+	s.registry.Deregister(service)
+
+	return l.Close()
 }
 
-func Start() error {
-	log.Debugf("Starting server %s id %s", Name, Id)
-	return DefaultServer.Start()
+func (s *Server) Close() error {
+	s.close <- struct{}{}
+	return nil
 }
 
-func Stop() error {
-	log.Debugf("Stopping server")
-	return DefaultServer.Stop()
+func (s *Server) Register(handler interface{}) {
+	s.transport.Register(handler)
+}
+
+func (s *Server) RegisterNamed(name string, handler interface{}) {
+	s.transport.RegisterNamed(name, handler)
 }

@@ -1,33 +1,27 @@
 package client
 
-type Client interface {
-	NewRequest(string, string, interface{}) Request
-	NewProtoRequest(string, string, interface{}) Request
-	NewJsonRequest(string, string, interface{}) Request
-	Call(interface{}, interface{}) error
-	CallRemote(string, string, interface{}, interface{}) error
-}
-
-var (
-	client = NewRpcClient()
+import (
+	"github.com/asim/go-micro/registry"
+	"github.com/asim/go-micro/transport"
 )
 
-func Call(request Request, response interface{}) error {
-	return client.Call(request, response)
+type Client struct {
+	id, name  string
+	transport transport.Transport
+	registry  registry.Registry
 }
 
-func CallRemote(address, path string, request Request, response interface{}) error {
-	return client.CallRemote(address, path, request, response)
+func New(id, name string, t transport.Transport, r registry.Registry) (*Client, error) {
+	return &Client{
+		id:        id,
+		name:      name,
+		transport: t,
+		registry:  r,
+	}, nil
 }
 
-func NewRequest(service, method string, request interface{}) Request {
-	return client.NewRequest(service, method, request)
-}
-
-func NewProtoRequest(service, method string, request interface{}) Request {
-	return client.NewProtoRequest(service, method, request)
-}
-
-func NewJsonRequest(service, method string, request interface{}) Request {
-	return client.NewJsonRequest(service, method, request)
+func (c *Client) NewRequest(
+	service, endpoint string, payload interface{},
+) (*transport.Request, error) {
+	return c.transport.NewRequest(service, endpoint, payload)
 }

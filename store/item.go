@@ -1,6 +1,6 @@
 package store
 
-type Item interface {
-	Key() string
-	Value() []byte
+type Item struct {
+	Key   string
+	Value []byte
 }

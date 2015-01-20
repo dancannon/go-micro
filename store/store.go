@@ -1,28 +1,41 @@
 package store
 
+import (
+	"errors"
+	"fmt"
+
+	log "github.com/Sirupsen/logrus"
+)
+
 type Store interface {
-	Get(string) (Item, error)
-	Del(string) error
-	Put(Item) error
-	NewItem(string, []byte) Item
+	Init(address string) error
+
+	Get(key string) (Item, error)
+	Del(key string) error
+	Put(key string, value []byte) error
 }
 
 var (
-	DefaultStore = NewConsulStore()
+	stores          map[string]Store
+	ErrNotSupported = errors.New("store not supported")
 )
 
-func Get(key string) (Item, error) {
-	return DefaultStore.Get(key)
+func Register(name string, r Store) error {
+	if _, exists := stores[name]; exists {
+		return fmt.Errorf("Store '%s' already registered", name)
+	}
+	stores[name] = r
+	log.Debugf("Registering store '%s'", name)
+
+	return nil
 }
 
-func Del(key string) error {
-	return DefaultStore.Del(key)
-}
+func New(name, address string) (Store, error) {
+	if s, exists := stores[name]; exists {
+		log.Debugf("Initializing store '%s'", name)
+		err := s.Init(address)
+		return s, err
+	}
 
-func Put(item Item) error {
-	return DefaultStore.Put(item)
-}
-
-func NewItem(key string, value []byte) Item {
-	return DefaultStore.NewItem(key, value)
+	return nil, ErrNotSupported
 }

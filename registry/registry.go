@@ -1,6 +1,25 @@
 package registry
 
+import (
+	"errors"
+	"fmt"
+
+	log "github.com/Sirupsen/logrus"
+)
+
+type Node struct {
+	Id      string
+	Address string
+	Port    int
+}
+
+type Service struct {
+	Name  string
+	Nodes []Node
+}
+
 type Registry interface {
+	Init(string) error
 	Register(Service) error
 	Deregister(Service) error
 	GetService(string) (Service, error)
@@ -9,17 +28,26 @@ type Registry interface {
 }
 
 var (
-	DefaultRegistry = NewConsulRegistry()
+	registries      map[string]Registry
+	ErrNotSupported = errors.New("registry not supported")
 )
 
-func Register(s Service) error {
-	return DefaultRegistry.Register(s)
+func Register(name string, r Registry) error {
+	if _, exists := registries[name]; exists {
+		return fmt.Errorf("Registry '%s' already registered", name)
+	}
+	registries[name] = r
+	log.Debugf("Registering registry '%s'", name)
+
+	return nil
 }
 
-func Deregister(s Service) error {
-	return DefaultRegistry.Deregister(s)
-}
+func New(name, address string) (Registry, error) {
+	if r, exists := registries[name]; exists {
+		log.Debugf("Initializing registry '%s'", name)
+		err := r.Init(address)
+		return r, err
+	}
 
-func GetService(name string) (Service, error) {
-	return DefaultRegistry.GetService(name)
+	return nil, ErrNotSupported
 }

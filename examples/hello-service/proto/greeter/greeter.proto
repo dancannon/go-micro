@@ -1,0 +1,9 @@
+package servie.hello.greeter;
+
+message Request {
+	required string name = 1;
+}
+
+message Response {
+	required string msg = 1;
+}
