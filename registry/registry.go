@@ -8,29 +8,33 @@ import (
 )
 
 type Node struct {
-	Id      string
+	ID      string
 	Address string
 	Port    int
 }
 
 type Service struct {
 	Name  string
-	Nodes []Node
+	Nodes []*Node
 }
 
 type Registry interface {
-	Init(string) error
-	Register(Service) error
-	Deregister(Service) error
-	GetService(string) (Service, error)
-	NewService(string, ...Node) Service
-	NewNode(string, string, int) Node
+	Init(address string) error
+	Register(*Service) error
+	Deregister(*Service) error
+	GetService(string) (*Service, error)
+	NewService(string, ...*Node) *Service
+	NewNode(string, string, int) *Node
 }
 
 var (
 	registries      map[string]Registry
 	ErrNotSupported = errors.New("registry not supported")
 )
+
+func init() {
+	registries = make(map[string]Registry)
+}
 
 func Register(name string, r Registry) error {
 	if _, exists := registries[name]; exists {

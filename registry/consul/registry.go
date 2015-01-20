@@ -17,11 +17,15 @@ type ConsulRegistry struct {
 }
 
 func init() {
-	registry.Register("consul", &ConsulRegistry{})
+	registry.Register("consul", new(ConsulRegistry))
 }
 
 func (r *ConsulRegistry) Init(address string) error {
 	config := consul.DefaultConfig()
+	if address != "" {
+		config.Address = address
+	}
+
 	client, err := consul.NewClient(config)
 	if err != nil {
 		return err
@@ -32,87 +36,77 @@ func (r *ConsulRegistry) Init(address string) error {
 	return nil
 }
 
-func (c *ConsulRegistry) Deregister(s registry.Service) error {
-	if len(s.Nodes()) == 0 {
+func (r *ConsulRegistry) Deregister(s *registry.Service) error {
+	if len(s.Nodes) == 0 {
 		return errors.New("Require at least one node")
 	}
 
-	node := s.Nodes()[0]
+	node := s.Nodes[0]
 
-	_, err := c.Client.Catalog().Deregister(&consul.CatalogDeregistration{
-		Node:      node.Id(),
-		Address:   node.Address(),
-		ServiceID: node.Id(),
+	_, err := r.Client.Catalog().Deregister(&consul.CatalogDeregistration{
+		Node:      node.ID,
+		Address:   node.Address,
+		ServiceID: node.ID,
 	}, nil)
 
 	return err
 }
 
-func (c *ConsulRegistry) Register(s registry.Service) error {
-	if len(s.Nodes()) == 0 {
+func (r *ConsulRegistry) Register(s *registry.Service) error {
+	if len(s.Nodes) == 0 {
 		return errors.New("Require at least one node")
 	}
 
-	node := s.Nodes()[0]
+	node := s.Nodes[0]
 
-	_, err := c.Client.Catalog().Register(&consul.CatalogRegistration{
-		Node:    node.Id(),
-		Address: node.Address(),
+	_, err := r.Client.Catalog().Register(&consul.CatalogRegistration{
+		Node:    node.ID,
+		Address: node.Address,
 		Service: &consul.AgentService{
-			ID:      node.Id(),
-			Service: s.Name(),
-			Port:    node.Port(),
+			Service: s.Name,
+			ID:      node.ID,
+			Port:    node.Port,
 		},
 	}, nil)
 
 	return err
 }
 
-func (c *ConsulRegistry) GetService(name string) (registry.Service, error) {
-	rsp, _, err := c.Client.Catalog().Service(name, "", nil)
+func (r *ConsulRegistry) GetService(name string) (*registry.Service, error) {
+	rsp, _, err := r.Client.Catalog().Service(name, "", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	cs := &ConsulService{}
+	cs := &registry.Service{}
 
 	for _, s := range rsp {
 		if s.ServiceName != name {
 			continue
 		}
 
-		cs.ServiceName = s.ServiceName
-		cs.ServiceNodes = append(cs.ServiceNodes, &ConsulNode{
-			Node:        s.Node,
-			NodeId:      s.ServiceID,
-			NodeAddress: s.Address,
-			NodePort:    s.ServicePort,
+		cs.Name = s.ServiceName
+		cs.Nodes = append(cs.Nodes, &registry.Node{
+			ID:      s.ServiceID,
+			Address: s.Address,
+			Port:    s.ServicePort,
 		})
 	}
 
 	return cs, nil
 }
 
-func (c *ConsulRegistry) NewService(name string, nodes ...registry.Node) registry.Service {
-	var snodes []*ConsulNode
-
-	for _, node := range nodes {
-		if n, ok := node.(*ConsulNode); ok {
-			snodes = append(snodes, n)
-		}
-	}
-
-	return &ConsulService{
-		ServiceName:  name,
-		ServiceNodes: snodes,
+func (r *ConsulRegistry) NewService(name string, nodes ...*registry.Node) *registry.Service {
+	return &registry.Service{
+		Name:  name,
+		Nodes: nodes,
 	}
 }
 
-func (c *ConsulRegistry) NewNode(id, address string, port int) registry.Node {
-	return &ConsulNode{
-		Node:        id,
-		NodeId:      id,
-		NodeAddress: address,
-		NodePort:    port,
+func (r *ConsulRegistry) NewNode(id, address string, port int) *registry.Node {
+	return &registry.Node{
+		ID:      id,
+		Address: address,
+		Port:    port,
 	}
 }

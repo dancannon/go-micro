@@ -8,18 +8,15 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
-	"sync"
+
+	log "github.com/cihub/seelog"
 
 	"github.com/asim/go-micro/errors"
-	log "github.com/cihub/seelog"
-	rpc "github.com/youtube/vitess/go/rpcplus"
-	js "github.com/youtube/vitess/go/rpcplus/jsonrpc"
-	pb "github.com/youtube/vitess/go/rpcplus/pbrpc"
 )
 
 var (
 	HealthPath = "/_status/health"
-	RpcPath    = "/_rpc"
+	RPCPath    = "/_rpc"
 )
 
 func executeRequestSafely(c *serverContext, r *http.Request) {
@@ -38,7 +35,7 @@ func executeRequestSafely(c *serverContext, r *http.Request) {
 
 func (t *Transport) handler(w http.ResponseWriter, r *http.Request) {
 	c := &serverContext{
-		req:       &serverRequest{r},
+		req:       r,
 		outHeader: w.Header(),
 	}
 
@@ -77,12 +74,6 @@ func (t *Transport) handler(w http.ResponseWriter, r *http.Request) {
 	if c.outBody != nil {
 		w.Write(c.outBody)
 	}
-}
-
-func (t *Transport) Address() string {
-	t.mtx.RLock()
-	defer t.mtx.RUnlock()
-	return t.address
 }
 
 func (t *Transport) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -133,37 +124,19 @@ func (t *Transport) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Write(rsp.Bytes())
 }
 
-func (t *Transport) Init() error {
-	log.Debugf("Rpc handler %s", RpcPath)
-	http.Handle(RpcPath, s)
-	return nil
+func (t *Transport) Register(handler interface{}) {
+	t.rpc.Register(handler)
 }
 
-func (t *Transport) Register(r Receiver) error {
-	if len(r.Name()) > 0 {
-		t.rpc.RegisterName(r.Name(), r.Handler())
-		return nil
-	}
-
-	t.rpc.Register(r.Handler())
-	return nil
-
+func (t *Transport) RegisterNamed(name string, handler interface{}) {
+	t.rpc.RegisterName(name, handler)
 }
 
-func (t *Transport) Register(handler interface{}) error {
-	s.rpc.Register(handler)
-	return nil
-}
-
-func (t *Transport) RegisterNamed(name string, handler interface{}) error {
-	s.rpc.RegisterName(name, handler)
-	return nil
-}
-
-func (t *Transport) ListenAndServe(addr string) (Listener, error) {
+func (t *Transport) StartListening(addr string) error {
 	registerHealthChecker(http.DefaultServeMux)
+	http.Handle(RPCPath, t)
 
-	l, err := net.Listen("tcp", t.address)
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
@@ -171,7 +144,6 @@ func (t *Transport) ListenAndServe(addr string) (Listener, error) {
 	log.Debugf("Listening on %s", l.Addr().String())
 
 	t.mtx.Lock()
-	t.address = l.Addr().String()
 	t.mtx.Unlock()
 
 	go http.Serve(l, http.HandlerFunc(t.handler))
@@ -184,10 +156,8 @@ func (t *Transport) ListenAndServe(addr string) (Listener, error) {
 	return nil
 }
 
-func NewRpcServer(address string) *RpcServer {
-	return &RpcServer{
-		rpc:     rpc.NewServer(),
-		address: address,
-		exit:    make(chan chan error),
-	}
+func (t *Transport) StopListening() error {
+	ch := make(chan error)
+	t.exit <- ch
+	return <-ch
 }

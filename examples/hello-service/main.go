@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Sirupsen/logrus"
 	"log"
 
 	"github.com/asim/go-micro"
@@ -9,7 +10,11 @@ import (
 )
 
 func main() {
+	logrus.SetLevel(logrus.DebugLevel)
+
 	config := micro.DefaultConsulConfig()
+	config.RegistryAddr = "boot2docker:8500"
+	config.StoreAddr = "boot2docker:8500"
 	service, err := micro.New("service.hello", config)
 	if err != nil {
 		log.Fatal(err)
@@ -22,7 +27,7 @@ func main() {
 	server.Register(new(handler.Greeter))
 
 	// Run server
-	if err := server.Start(":8080"); err != nil {
+	if err := server.ListenAndServe("127.0.0.1:8080"); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -22,6 +22,6 @@ func New(id, name string, t transport.Transport, r registry.Registry) (*Client, 
 
 func (c *Client) NewRequest(
 	service, endpoint string, payload interface{},
-) (*transport.Request, error) {
+) (transport.Request, error) {
 	return c.transport.NewRequest(service, endpoint, payload)
 }

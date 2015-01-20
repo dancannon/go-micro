@@ -16,23 +16,24 @@ type Transport interface {
 }
 
 type Requester interface {
-	NewRequest(service, endpoint string, payload interface{}) (*Request, error)
+	NewRequest(service, endpoint string, payload interface{}) (Request, error)
 }
 
 type Responder interface {
 	Register(handler interface{})
 	RegisterNamed(name string, handler interface{})
-	Start(addr string) (Listener, error)
-}
-
-type Listener interface {
-	Close() error
+	StartListening(addr string) error
+	StopListening() error
 }
 
 var (
 	transports      map[string]Transport
 	ErrNotSupported = errors.New("transport not supported")
 )
+
+func init() {
+	transports = make(map[string]Transport)
+}
 
 func Register(name string, r Transport) error {
 	if _, exists := transports[name]; exists {

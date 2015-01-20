@@ -5,7 +5,8 @@ import (
 )
 
 type buffer struct {
-	io.ReadWriter
+	io.Reader
+	io.Writer
 }
 
 func (b *buffer) Close() error {

@@ -17,8 +17,18 @@ func init() {
 	store.Register("memcached", &MemcacheStore{})
 }
 
-func (m *MemcacheStore) Get(key string) (store.Item, error) {
-	kv, err := m.Client.Get(key)
+func (r *MemcacheStore) Init(address string) error {
+	if address == "" {
+		address = "127.0.0.1:11211"
+	}
+
+	r.Client = mc.New(address)
+
+	return nil
+}
+
+func (r *MemcacheStore) Get(key string) (store.Item, error) {
+	kv, err := r.Client.Get(key)
 	if err != nil && err == mc.ErrCacheMiss {
 		return nil, errors.New("key not found")
 	} else if err != nil {
@@ -35,12 +45,12 @@ func (m *MemcacheStore) Get(key string) (store.Item, error) {
 	}, nil
 }
 
-func (m *MemcacheStore) Del(key string) error {
-	return m.Client.Delete(key)
+func (r *MemcacheStore) Del(key string) error {
+	return r.Client.Delete(key)
 }
 
-func (m *MemcacheStore) Put(key string, value []byte) error {
-	return m.Client.Set(&mc.Item{
+func (r *MemcacheStore) Put(key string, value []byte) error {
+	return r.Client.Set(&mc.Item{
 		Key:   key,
 		Value: value,
 	})

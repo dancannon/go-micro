@@ -7,7 +7,7 @@ type Request interface {
 
 	Headers() Headers
 
-	Send() (interface{}, error)
+	Execute(response interface{}) error
 }
 
 type Headers interface {

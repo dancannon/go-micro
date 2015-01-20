@@ -1,35 +1,40 @@
 package rpc
 
 import (
+	"io"
+	"sync"
+
 	"github.com/youtube/vitess/go/rpcplus"
 
 	"github.com/asim/go-micro/registry"
+	"github.com/asim/go-micro/transport"
 )
 
 type marshaler interface {
-	NewClientCodec(data interface{}) rpcplus.ClientCodec
-	NewServerCodec(data interface{}) rpcplus.ServerCodec
+	ContentType() string
+	NewClientCodec(data io.ReadWriteCloser) rpcplus.ClientCodec
+	NewServerCodec(data io.ReadWriteCloser) rpcplus.ServerCodec
 }
 
 type Transport struct {
 	marshaler marshaler
-	registry  *registry.Registry
+	registry  registry.Registry
 
 	// server related fields
-	mtx sync.RWMutex
-	rpc *rpc.Server
-}
-
-type Listener struct {
+	mtx  sync.RWMutex
+	rpc  *rpcplus.Server
 	exit chan chan error
 }
 
-func (l *Listener) Close() error {
-	ch := make(chan error)
-	l.exit <- ch
-	return <-ch
+func init() {
+	transport.Register("pbrpc", &Transport{marshaler: pbMarshaler{}})
+	transport.Register("jsonrpc", &Transport{marshaler: jsonMarshaler{}})
 }
 
-func (t *RPCTransport) Init(reg *registry.Registry) error {
+func (t *Transport) Init(reg registry.Registry) error {
 	t.registry = reg
+	t.rpc = rpcplus.NewServer()
+	t.exit = make(chan chan error)
+
+	return nil
 }

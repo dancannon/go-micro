@@ -30,8 +30,8 @@ func New(id, name string, t transport.Transport, r registry.Registry) (*Server, 
 	}, nil
 }
 
-func (s *Server) Start(address string) error {
-	l, err := s.transport.Start(address)
+func (s *Server) ListenAndServe(address string) error {
+	err := s.transport.StartListening(address)
 	if err != nil {
 		return err
 	}
@@ -42,33 +42,37 @@ func (s *Server) Start(address string) error {
 	port, _ := strconv.Atoi(parts[len(parts)-1])
 
 	// register service
-	node := registry.Node{s.id, host, port}
-	service := registry.Service{s.name, []registry.Node{node}}
+	node := &registry.Node{
+		ID:      s.id,
+		Address: host,
+		Port:    port,
+	}
+	service := &registry.Service{
+		Name:  s.name,
+		Nodes: []*registry.Node{node},
+	}
 
-	log.Debugf("Registering %s", node.Id)
-	s.registry.Register(service)
+	log.Debugf("Registering %s", node.ID)
+	err = s.registry.Register(service)
+	if err != nil {
+		return err
+	}
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
+	log.Debugf("Received signal %s", <-ch)
 
-	for {
-		select {
-		case <-ch:
-			log.Debugf("Received signal")
-		case <-s.close:
-			log.Debugf("Stopping server")
-		}
+	log.Debugf("Deregistering %s", node.ID)
+	err = s.registry.Deregister(service)
+	if err != nil {
+		return err
 	}
 
-	log.Debugf("Deregistering %s", node.Id)
-	s.registry.Deregister(service)
-
-	return l.Close()
+	return s.transport.StopListening()
 }
 
 func (s *Server) Close() error {
-	s.close <- struct{}{}
-	return nil
+	return s.transport.StopListening()
 }
 
 func (s *Server) Register(handler interface{}) {

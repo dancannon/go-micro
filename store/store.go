@@ -10,7 +10,7 @@ import (
 type Store interface {
 	Init(address string) error
 
-	Get(key string) (Item, error)
+	Get(key string) (*Item, error)
 	Del(key string) error
 	Put(key string, value []byte) error
 }
@@ -19,6 +19,10 @@ var (
 	stores          map[string]Store
 	ErrNotSupported = errors.New("store not supported")
 )
+
+func init() {
+	stores = make(map[string]Store)
+}
 
 func Register(name string, r Store) error {
 	if _, exists := stores[name]; exists {

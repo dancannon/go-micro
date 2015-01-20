@@ -9,9 +9,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/asim/go-micro/errors"
-	"github.com/asim/go-micro/registry"
 	"github.com/youtube/vitess/go/rpcplus"
+
+	"github.com/asim/go-micro/errors"
+	"github.com/asim/go-micro/transport"
 )
 
 type headerRoundTripper struct {
@@ -27,19 +28,17 @@ func (t *headerRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) 
 	return t.r.RoundTrip(r)
 }
 
-func (t *RPCTransport) call(address, path string, request Request, response interface{}) error {
+func (t *Transport) call(address, path string, request *Request, response interface{}) error {
 	pReq := &rpcplus.Request{
 		ServiceMethod: request.Method(),
 	}
 
 	reqB := bytes.NewBuffer(nil)
 	defer reqB.Reset()
-	buf := &buffer{
-		reqB,
-	}
+	buf := &buffer{reqB, reqB}
 
 	cc := t.marshaler.NewClientCodec(buf)
-	err := cc.WriteRequest(pReq, request.Request())
+	err := cc.WriteRequest(pReq, request.Payload())
 	if err != nil {
 		return errors.InternalServerError("go.micro.client", fmt.Sprintf("Error writing request: %v", err))
 	}
@@ -47,7 +46,7 @@ func (t *RPCTransport) call(address, path string, request Request, response inte
 	client := &http.Client{}
 	client.Transport = &headerRoundTripper{http.DefaultTransport}
 
-	request.Headers().Set("Content-Type", request.ContentType())
+	request.Headers().Set("Content-Type", t.marshaler.ContentType())
 
 	hreq := &http.Request{
 		Method: "POST",
@@ -75,11 +74,9 @@ func (t *RPCTransport) call(address, path string, request Request, response inte
 
 	rspB := bytes.NewBuffer(b)
 	defer rspB.Reset()
-	rBuf := &buffer{
-		rspB,
-	}
+	rBuf := &buffer{rspB, rspB}
 
-	pRsp := &rpc.Response{}
+	pRsp := &rpcplus.Response{}
 	cc = t.marshaler.NewClientCodec(rBuf)
 	err = cc.ReadResponseHeader(pRsp)
 	if err != nil {
@@ -98,28 +95,29 @@ func (t *RPCTransport) call(address, path string, request Request, response inte
 	return nil
 }
 
-func (t *RPCTransport) Send(request Request, response interface{}) error {
+func (t *Transport) Execute(request *Request, response interface{}) error {
 	service, err := t.registry.GetService(request.Service())
 	if err != nil {
 		return errors.InternalServerError("go.micro.client", err.Error())
 	}
 
-	if len(service.Nodes()) == 0 {
+	if len(service.Nodes) == 0 {
 		return errors.NotFound("go.micro.client", "Service not found")
 	}
 
-	n := rand.Int() % len(service.Nodes())
-	node := service.Nodes()[n]
-	address := fmt.Sprintf("%s:%d", node.Address(), node.Port())
+	n := rand.Int() % len(service.Nodes)
+	node := service.Nodes[n]
+	address := fmt.Sprintf("%s:%d", node.Address, node.Port)
 
-	return r.call(address, "/_rpc", request, response)
+	return t.call(address, "/_rpc", request, response)
 }
 
-func (t *RPCTransport) NewRequest(service, endpoint string, payload interface{}) error {
-	return Request{
+func (t *Transport) NewRequest(service, method string, payload interface{}) (transport.Request, error) {
+	return &Request{
 		service:   service,
-		endpoint:  endpoint,
+		method:    method,
 		payload:   payload,
+		headers:   make(http.Header),
 		transport: t,
-	}
+	}, nil
 }
