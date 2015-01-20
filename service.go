@@ -35,7 +35,7 @@ type Config struct {
 	Transport string
 }
 
-func DefaultConfig() Config {
+func DefaultConsulConfig() Config {
 	return Config{
 		Registry:  "consul",
 		Store:     "consul",

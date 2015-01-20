@@ -9,10 +9,8 @@ import (
 )
 
 func main() {
-	service, err := micro.New("service.hello", micro.Config{
-		Registry: "consul",
-		Store:    "consul",
-	})
+	config := micro.DefaultConsulConfig()
+	service, err := micro.New("service.hello", config)
 	if err != nil {
 		log.Fatal(err)
 	}
