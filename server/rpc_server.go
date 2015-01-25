@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"github.com/bugsnag/bugsnag-go"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -30,6 +31,7 @@ var (
 )
 
 func executeRequestSafely(c *serverContext, r *http.Request) {
+	defer bugsnag.AutoNotify()
 	defer func() {
 		if x := recover(); x != nil {
 			log.Criticalf("Panicked on request: %v", r)
@@ -154,7 +156,7 @@ func (s *RpcServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (s *RpcServer) Init() error {
 	log.Debugf("Rpc handler %s", RpcPath)
-	http.Handle(RpcPath, s)
+	http.Handle(RpcPath, bugsnag.Handler(s))
 	return nil
 }
 

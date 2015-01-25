@@ -1,7 +1,7 @@
 package store
 
 import (
-	"errors"
+	"fmt"
 
 	consul "github.com/hashicorp/consul/api"
 )
@@ -16,7 +16,7 @@ func (c *ConsulStore) Get(key string) (Item, error) {
 		return nil, err
 	}
 	if kv == nil {
-		return nil, errors.New("key not found")
+		return nil, fmt.Errorf("key %s not found", key)
 	}
 
 	return &ConsulItem{

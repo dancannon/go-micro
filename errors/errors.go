@@ -30,7 +30,9 @@ func Parse(err string) *Error {
 	var e *Error
 	errr := json.Unmarshal([]byte(err), &e)
 	if errr != nil {
-		e.Detail = err
+		e = &Error{
+			Detail: err,
+		}
 	}
 	return e
 }
